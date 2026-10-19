@@ -36,7 +36,7 @@ jobs:
           for f in "${files[@]}"; do curl -fsSLO "$base/$f"; done
           curl -fsSL -o ../checksums.sha256 "$base/checksums.sha256"
           # verify exactly our files
-          for f in "${files[@]}"; do grep -E "^[0-9a-f]{64} [ *]$f$" ../checksums.sha256 || { echo "::error::$f is not in checksums.sha256"; exit 1; }; done > ../ours.sha256
+          for f in "${files[@]}"; do grep -E "^[0-9a-f]{64} [ *]$f$" ../checksums.sha256 || { echo "::error::$f is not in checksums.sha256" >&2; exit 1; }; done > ../ours.sha256
           sha256sum --strict -c ../ours.sha256
 
       - name: Get version
