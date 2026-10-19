@@ -29,15 +29,14 @@ jobs:
     steps:
       - name: Download and verify
         run: |
-          [[ $V =~ ^[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid version $V"; exit 1; }
+          [[ $TAG =~ ^[0-9]+\.[0-9]+-[0-9]+$ ]] || { echo "::error::Invalid version or release: $TAG"; exit 1; }
           mkdir assets && cd assets
           base=https://github.com/BtbN/FFmpeg-Builds/releases/download/latest
           files=(ffmpeg-n$V-latest-{linux64-gpl-shared-$V.tar.xz,win64-gpl-shared-$V.zip,winarm64-gpl-shared-$V.zip})
           for f in "${files[@]}"; do curl -fsSLO "$base/$f"; done
           curl -fsSL -o ../checksums.sha256 "$base/checksums.sha256"
           # verify exactly our files
-          for f in "${files[@]}"; do grep -E "^[0-9a-f]{64} [ *]$f$" ../checksums.sha256; done > ../ours.sha256
-          [ "$(wc -l < ../ours.sha256)" = "${#files[@]}" ] || { echo "::error::Not all files are in checksums.sha256"; exit 1; }
+          for f in "${files[@]}"; do grep -E "^[0-9a-f]{64} [ *]$f$" ../checksums.sha256 || { echo "::error::$f is not in checksums.sha256"; exit 1; }; done > ../ours.sha256
           sha256sum --strict -c ../ours.sha256
 
       - name: Get version
