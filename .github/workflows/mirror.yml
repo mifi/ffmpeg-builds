@@ -1,0 +1,48 @@
+name: Mirror BtbN release
+
+# Mirrors the gpl-shared builds of one FFmpeg release branch from https://github.com/BtbN/FFmpeg-Builds
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'FFmpeg release branch, e.g. 8.1'
+        required: true
+      release:
+        description: 'Release number, the tag will be <version>-<release>'
+        required: true
+        default: '1'
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    env:
+      V: ${{ inputs.version }}
+      TAG: ${{ inputs.version }}-${{ inputs.release }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download
+        run: |
+          base=https://github.com/BtbN/FFmpeg-Builds/releases/download/latest
+          for f in linux64-gpl-shared-$V.tar.xz win64-gpl-shared-$V.zip winarm64-gpl-shared-$V.zip; do
+            curl -fsSLO "$base/ffmpeg-n$V-latest-$f"
+          done
+          curl -fsSLO "$base/checksums.sha256"
+          sha256sum --ignore-missing --strict -c checksums.sha256
+          [ "$(ls ffmpeg-n$V-latest-* | wc -l)" = 3 ]
+
+      - name: Get version
+        id: version
+        run: |
+          tar -xf ffmpeg-n$V-latest-linux64-gpl-shared-$V.tar.xz
+          dir=ffmpeg-n$V-latest-linux64-gpl-shared-$V
+          LD_LIBRARY_PATH=$dir/lib $dir/bin/ffmpeg -version | head -1 | tee version.txt
+          objdump -p $dir/bin/ffmpeg | grep -E 'RPATH|RUNPATH' || true
+
+      - name: Create release
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" \
+            --notes "Mirror of BtbN/FFmpeg-Builds ($(cat version.txt))" \
+            ffmpeg-n$V-latest-*
